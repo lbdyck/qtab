@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '1.5'
+  ver = '1.6'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -14,6 +14,7 @@
   | Author:    Lionel B. Dyck                                  |
   |                                                            |
   | History:  (most recent on top)                             |
+  |            12/04/20 - Fix unknown zcmd processing          |
   |            11/12/20 - Add Find/RFind for selected Table    |
   |            03/07/20 - Enable RFIND                         |
   |            01/29/20 - Expand table name by 1               |
@@ -194,32 +195,33 @@
         'tbskip' qtab 'number('top')'
         zcmd = 'F' ftab
       end
-      if word(zcmd,1) /= 'F' then leave
-      ftab = word(zcmd,2)
-      if pos('*',ftab) > 0 then do
-        ftab = strip(translate(ftab,' ','*'))
-      end
-      wrap = 0
-      do forever
-        'tbskip' qtab
-        'tbget' qtab
-        if rc > 0 then do
-          if wrap = 1 then leave
-          'tbtop' qtab
-          wrap = 1
+      if word(zcmd,1) = 'F' then do
+        ftab = word(zcmd,2)
+        if pos('*',ftab) > 0 then do
+          ftab = strip(translate(ftab,' ','*'))
         end
-        if pos(ftab,tab) > 0 then do
-          'tbquery' qtab 'position(top)'
-          if wrap = 1 then do
-            zedsmsg = 'Wrapped.'
-            zedlmsg = 'Found the requested table.'
+        wrap = 0
+        do forever
+          'tbskip' qtab
+          'tbget' qtab
+          if rc > 0 then do
+            if wrap = 1 then leave
+            'tbtop' qtab
+            wrap = 1
           end
-          else do
-            zedsmsg = 'Found.'
-            zedlmsg = 'Found the requested table.'
+          if pos(ftab,tab) > 0 then do
+            'tbquery' qtab 'position(top)'
+            if wrap = 1 then do
+              zedsmsg = 'Wrapped.'
+              zedlmsg = 'Found the requested table.'
+            end
+            else do
+              zedsmsg = 'Found.'
+              zedlmsg = 'Found the requested table.'
+            end
+            'setmsg msg(isrz001)'
+            leave
           end
-          'setmsg msg(isrz001)'
-          leave
         end
       end
     end
@@ -283,10 +285,10 @@ Do_Table:
     'vput (usrrfind)'
     if tbrc > 0 then leave
     if zcmd = 'RFIND' then do
-        'tbtop' vtab
-        'tbskip' vtab 'number('top')'
-        zcmd = 'F' ftab
-       end
+      'tbtop' vtab
+      'tbskip' vtab 'number('top')'
+      zcmd = 'F' ftab
+    end
     if abbrev('FIND',word(zcmd,1),1) = 1 then do
       wrap = 0
       ftab = subword(zcmd,2)
@@ -312,7 +314,7 @@ Do_Table:
           leave
         end
       end
-       end
+    end
   end
   'tbend' vtab
   return
