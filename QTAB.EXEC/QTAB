@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '1.6'
+  ver = '1.7'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -14,6 +14,7 @@
   | Author:    Lionel B. Dyck                                  |
   |                                                            |
   | History:  (most recent on top)                             |
+  |            12/07/20 - Fix header alignment                 |
   |            12/04/20 - Fix unknown zcmd processing          |
   |            11/12/20 - Add Find/RFind for selected Table    |
   |            03/07/20 - Enable RFIND                         |
@@ -655,14 +656,14 @@ $ type(  text) intens(high) caps(off) hilite(reverse)
 %Command ===>_zcmd                                 / /%Scroll ===>_amt +
 %
 %S Table         Keys    Names     Cdate     Ctime       UDate       UTime
-%            Userid       Rows        C-Rows   Rows-Upd  TableUpd
-%            Library   Storage
-%            Status (1-2-3)
+%Userid       Rows        C-Rows   Rows-Upd  TableUpd
+%Library   Storage
+%Status (1-2-3)
 -----------------------------------------------------------------------------
 )Model
 !z#z       +^z       +^z      +  +@z        @z          @z          @z
-@z        ^z      +   ^z       + ^z      +    ^z     +
-@z        ^z      +
+@z          ^z       +^z      + ^z         +  ^z     +
+@z          ^z       +
 @z
 @z
 @z
