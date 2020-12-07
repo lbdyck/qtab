@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '1.7'
+  ver = '1.8'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -15,6 +15,7 @@
   |                                                            |
   | History:  (most recent on top)                             |
   |            12/07/20 - Fix header alignment                 |
+  |                     - If table date/time null set 'N/A'    |
   |            12/04/20 - Fix unknown zcmd processing          |
   |            11/12/20 - Add Find/RFind for selected Table    |
   |            03/07/20 - Enable RFIND                         |
@@ -105,6 +106,8 @@
     /* -------------------------------- *
     | Clean up the numbers by adding 0 |
     * -------------------------------- */
+    if pos('/',cdate) = 0 then cdate = 'N/A'
+    if pos(':',ctime) = 0 then ctime = 'N/A'
     if datatype(keysn)    = 'NUM' then keysn = keysn + 0
     if datatype(namesn)   = 'NUM' then namesn = namesn + 0
     if datatype(rowcreat) = 'NUM' then rowcreat = rowcreat + 0
