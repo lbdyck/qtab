@@ -308,7 +308,9 @@ Tabdispl: Procedure
     xnames = names
     hdr = 'Names:'
     do until strip(xnames) = null
-      p = lastpos(' ',xnames,73)
+     if length(xnames) > 72
+       then  p = lastpos(' ',xnames,73)
+       else p = 0
       if p > 0 then do
         saynames = left(xnames,p)
         xnames = substr(xnames,p)
