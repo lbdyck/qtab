@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '2.0'
+  ver = '3.0'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -14,7 +14,10 @@
   | Author:    Lionel B. Dyck                                  |
   |                                                            |
   | History:  (most recent on top)                             |
-  |            06/16/22 - Add Key Indicator                    |
+  |            06/16/22 - V3.0 - remove selected table display |
+  |                       and use the tabdispl exec, now as a  |
+  |                       subroutine to display selected table.|
+  |            06/16/22 - V2.0 Add Key Indicator               |
   |            10/19/21 - Support row extension variables      |
   |            12/07/20 - Fix header alignment                 |
   |                     - If table date/time null set 'N/A'    |
@@ -246,102 +249,132 @@
   exit
 
 Do_Table:
-  vtab = 'VTAB'random(9999)
-  'TBSTATS' tab 'STATUS2(OPEN)'
-  'TBQUERY' tab 'KEYS(K) NAMES(N) ROWNUM(R)'
-  if rc > 0 then do
-    zedsmsg = 'Error.'
-    zedlmsg = 'Unable to query the table.'
-    'setmsg msg(isrz001)'
-    return
+  x = tabdispl(tab)
+  return
+
+Tabdispl: Procedure
+  /* --------------------  rexx procedure  -------------------- *
+  | Name:      tabdispl                                        |
+  |                                                            |
+  | Function:  ISPF table layout display to show the config    |
+  |            of an ISPF table (keys,names,savename) for      |
+  |            each row with values.                           |
+  |                                                            |
+  | Syntax:    %tabdispl table-name                            |
+  |                                                            |
+  | Usage Notes:  The table may or may not be open             |
+  |                                                            |
+  | Author:    Lionel B. Dyck                                  |
+  |                                                            |
+  | History:  (most recent on top)                             |
+  |            2022/06/13 LBD - add stemedit instead of say    |
+  |            2022/06/11 LBD - Created                        |
+  |                                                            |
+  * ---------------------------------------------------------- */
+  arg table
+  parse value '' with null
+  c = 0
+  maxl = 0
+
+  if table = null then do
+    say 'tabdispl requires a table name - please try again....'
+    return 8
   end
-  if k = null then
-  if n = null then do
-    zedsmsg = 'Warning.'
-    zedlmsg = 'Unable to query the table.'
-    'setmsg msg(isrz001)'
-    return
+
+  address ispexec
+  'Control Errors Return'
+
+  'tbopen' table 'nowrite'
+  if rc < 13 then tbend = 0
+  else tbend = 1
+  if rc > 12 then do
+    say zerrlm
+    return rc
   end
-  'tbcreate' vtab 'Names(vrow vkey vname vdesc) nowrite'
-  parse var k '(' k ')'
-  parse var n '(' n ')'
-  parse var keys '('keys')'
-  'TBTOP' tab
-  do it = 1 to r
-    'TBSKIP' tab
-    save = null
-    'TBGET' tab 'ROWID(P) SaveName(save)'
-    if save /= null
-       then parse value save with '('save')'
-    vrow = right(p,6)
-    if words(k) > 0 then do j=1 to words(k)
-      vname = word(k,j)
-      vdesc = value(vname)
-      if wordpos(vname,keys) > 0
-         then vkey = '*'
-         else vkey = ''
-      'tbadd' vtab
-    end
-    if words(n) > 0 then do j=1 to words(n)
-      vname = word(n,j)
-      if wordpos(vname,keys) > 0
-         then vkey = '*'
-         else vkey = ''
-      vdesc = value(vname)
-      'tbadd' vtab
-    end
-    if words(save) > 0 then do j=1 to words(save)
-      vname = word(save,j)
-      if wordpos(vname,keys) > 0
-         then vkey = '*'
-         else vkey = ''
-      vdesc = value(vname)
-      vname = vname'*'
-      'tbadd' vtab
-    end
-  end
-  'tbtop' vtab
-  do forever
-    usrrfind = 'PASSTHRU'
-    'vput (usrrfind)'
-    'tbdispl' vtab 'Panel(vtab)'
-    tbrc = rc
-    usrrfind = ''
-    'vput (usrrfind)'
-    if tbrc > 0 then leave
-    if zcmd = 'RFIND' then do
-      'tbtop' vtab
-      'tbskip' vtab 'number('top')'
-      zcmd = 'F' ftab
-    end
-    if abbrev('FIND',word(zcmd,1),1) = 1 then do
-      wrap = 0
-      ftab = subword(zcmd,2)
-      do forever
-        'tbskip' vtab
-        'tbget' vtab
-        if rc > 0 then do
-          if wrap = 1 then leave
-          'tbtop' vtab
-          wrap = 1
-        end
-        if pos(ftab,translate(vname vdesc)) > 0 then do
-          'tbquery' vtab 'position(top)'
-          if wrap = 1 then do
-            zedsmsg = 'Wrapped.'
-            zedlmsg = 'Found the requested table.'
-          end
-          else do
-            zedsmsg = 'Found.'
-            zedlmsg = 'Found the requested table.'
-          end
-          'setmsg msg(isrz001)'
-          leave
-        end
+  'tbquery' table 'keynum(keysn) namenum(namesn)' ,
+    'keys(keys) names(names) rownum(rows)'
+
+  parse value keys with '('keys')'
+  parse value names with '('names')'
+
+  'tbstats' table 'cdate(cd) ctime(ct) udate(ud) utime(ut) user(user)'
+
+  call do_say 'Table name:' table
+  call do_say 'Rows: ' rows+0
+  call do_say 'Keys: ' keys
+  if length(names) < 72
+  then call do_say 'Names:' names
+  else do
+    xnames = names
+    hdr = 'Names:'
+    do until strip(xnames) = null
+      p = lastpos(' ',xnames,73)
+      if p > 0 then do
+        saynames = left(xnames,p)
+        xnames = substr(xnames,p)
       end
+      else do
+        saynames = xnames
+        xnames = null
+      end
+      call do_say hdr saynames
+      xnames = strip(xnames)
+      hdr = copies(' ',6)
     end
   end
-  'tbend' vtab
+  call do_say 'Creation Date/Time:' cd ct
+  call do_say 'Update Date/Time:  ' ud ut 'By' user
+  call do_say copies('-',80)
+  call do_say ' '
+
+  'tbtop' table
+  row = 0
+  do forever
+    'tbskip' table
+    if rc > 0 then leave
+    row = row + 1
+    call do_say 'Row:  ' row
+    'tbget' table 'savename(save)'
+    if save /= null then
+    parse value save with '('save')'
+    do i = 1 to words(keys)
+      k = word(keys,i)
+      call do_say 'Key: ' left(k,8) value(k)
+    end
+    do i = 1 to words(names)
+      n = word(names,i)
+      call do_say 'Name:' left(n,8) value(n)
+    end
+    do i = 1 to words(save)
+      n = word(save,i)
+      call do_say 'Save:' left(n,8) value(n)
+    end
+    call do_say copies('-',80)
+  end
+
+  if tbend = 1 then
+  'tbend' table
+
+   /* allocate a temp file to browse the results */
+   tab_dd = "C"random()
+   Address TSO
+   "allocate file("tab_dd") reuse unit(vio) space(1 1)" ,
+     "cyl dsorg(ps) recfm(v b) lrecl("maxl+4")"
+   "execio * diskw" tab_dd "(stem say. finis)"
+   address ispexec "lminit dataid(dataid) ddname("tab_dd")"
+   address ispexec "view dataid("dataid")"
+   address ispexec "lmfree dataid("dataid")"
+   "free file("tab_dd")"
+
+  Return 0
+
+do_say:
+  parse arg text
+  c = c + 1
+  say.c = text
+  say.0 = c
+  if length(text) > maxl
+     then maxl = length(text)
   return
 
   /* --------------------  rexx procedure  -------------------- *
@@ -649,26 +682,6 @@ Alloc_DD:
   * ------------------------------------------------ */
 /*
 >START
->Panel vtab
-)Attr
-! type( input) intens(high) caps(on ) just(left ) hilite(uscore)
-# type(output) intens(low ) caps(off) just(left) color(turq)
-@ type(output) intens(low ) caps(off) just(left)
-^ type(output) intens(low ) caps(off) just(right)
-$ type(  text) intens(high) caps(off) hilite(reverse)
-)Body Expand(//)
-%-/-/-$List of Table values: @tab     %-/-/-
-%Command ===>_zcmd                                 / /%Scroll ===>_amt +
-+
-+Row    K Variable  Description
-)Model
-@z     @z@z        @z
-)Init
-&amt = CSR
-.zvars = '(vrow vkey vname vdesc)'
-.help = QTABH
-)Proc
-)end
 >PANEL QTAB
 )Attr Default(%+_)
 ! type( input) intens(high) caps(on ) just(left ) hilite(uscore)
