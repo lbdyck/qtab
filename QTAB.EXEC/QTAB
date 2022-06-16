@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '1.8'
+  ver = '2.0'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -14,6 +14,8 @@
   | Author:    Lionel B. Dyck                                  |
   |                                                            |
   | History:  (most recent on top)                             |
+  |            06/16/22 - Add Key Indicator                    |
+  |            10/19/21 - Support row extension variables      |
   |            12/07/20 - Fix header alignment                 |
   |                     - If table date/time null set 'N/A'    |
   |            12/04/20 - Fix unknown zcmd processing          |
@@ -260,22 +262,41 @@ Do_Table:
     'setmsg msg(isrz001)'
     return
   end
-  'tbcreate' vtab 'Names(vrow vname vdesc) nowrite'
+  'tbcreate' vtab 'Names(vrow vkey vname vdesc) nowrite'
   parse var k '(' k ')'
   parse var n '(' n ')'
+  parse var keys '('keys')'
   'TBTOP' tab
   do it = 1 to r
     'TBSKIP' tab
-    'TBGET' tab 'ROWID(P)'
+    save = null
+    'TBGET' tab 'ROWID(P) SaveName(save)'
+    if save /= null
+       then parse value save with '('save')'
     vrow = right(p,6)
     if words(k) > 0 then do j=1 to words(k)
       vname = word(k,j)
       vdesc = value(vname)
+      if wordpos(vname,keys) > 0
+         then vkey = '*'
+         else vkey = ''
       'tbadd' vtab
     end
     if words(n) > 0 then do j=1 to words(n)
       vname = word(n,j)
+      if wordpos(vname,keys) > 0
+         then vkey = '*'
+         else vkey = ''
       vdesc = value(vname)
+      'tbadd' vtab
+    end
+    if words(save) > 0 then do j=1 to words(save)
+      vname = word(save,j)
+      if wordpos(vname,keys) > 0
+         then vkey = '*'
+         else vkey = ''
+      vdesc = value(vname)
+      vname = vname'*'
       'tbadd' vtab
     end
   end
@@ -639,12 +660,13 @@ $ type(  text) intens(high) caps(off) hilite(reverse)
 %-/-/-$List of Table values: @tab     %-/-/-
 %Command ===>_zcmd                                 / /%Scroll ===>_amt +
 +
-+Row    Variable  Description
++Row    K Variable  Description
 )Model
-@z     @z   e    @z
+@z     @z@z        @z
 )Init
 &amt = CSR
-.zvars = '(vrow vname vdesc)'
+.zvars = '(vrow vkey vname vdesc)'
+.help = QTABH
 )Proc
 )end
 >PANEL QTAB
@@ -701,8 +723,8 @@ ommand ===>_ZCMD                                                             +
 +       Library (DDName)
 +       Table Status info (3)
 +
-+ Select a table to display details, including individual row/variables.
-+
++ Select a table to display details, including individual row/variables. Note
++ Row extension variable names end with an%*+
 )INIT
 .cursor = &zcmd
 )PROC
