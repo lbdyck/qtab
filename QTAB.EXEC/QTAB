@@ -759,24 +759,24 @@ rowupd tableupd library virtsize status1 status2 status3) '
 $ type(  text) intens(high) caps(off) hilite(reverse)
 )Body Expand(\\)
 %-\-\-$List Active ISPF Tables%-\-\-
-ommand ===>_ZCMD                                                             +
+%Command ===>_ZCMD                                                             +
 %
-+  All active ISPF Tables are displayed in a multi-row table with the
-+  following information:
++All active ISPF Tables are displayed in a multi-row table with the
++following information:
 +
-+       Table Name
-+       Keys count
-+       Names count
-+       Create Date and Time
-+       Update Date and Time
-+       Last Userid to Update
-+       Row count current, at table create and updated
-+       Number of times the Table has been updated
-+       Library (DDName)
-+       Table Status info (3)
++   Table Name                  Last Userid to Update
++   Keys count                  Row count current, at table create and updated
++   Names count                 Number of times the Table has been updated
++   Create Date and Time        Library (DDName)
++   Update Date and Time        Table Status info (3)
 +
-+ Select a table to display details, including individual row/variables. Note
-+ Row extension variable names end with an%*+
++Available Commands: %Find xxx+   find xxx in table name and reposition cursor
++                    %REFresh+    refresh the table of tables
++
++Selection Options:  %C+           Close using TBEND (or try)
++                    %non-blank+   Display the table structure and contents
++
++Note: Row extension variable names end with an%*+
 )INIT
 .cursor = &zcmd
 )PROC
