@@ -780,6 +780,8 @@ $ type(  text) intens(high) caps(off) hilite(reverse)
 )INIT
 .cursor = &zcmd
 )PROC
+ &zup = qtabh
+ &zcont = qtabh
 )END
 >END
 */
