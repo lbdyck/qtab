@@ -1,5 +1,5 @@
   /* --------------------  rexx procedure  -------------------- */
-  ver = '3.0'
+  ver = '3.1'
   /*Name:      QTAB                                            |
   |                                                            |
   | Function:  Display Open ISPF Tables                        |
@@ -11,9 +11,16 @@
   |                                                            |
   | Usage Notes: Used to display open ispf tables              |
   |                                                            |
+  | Commands:  FIND xxx                                        |
+  |            REFresh                                         |
+  | Options:   C to close the table using TBEND                |
+  |            any-nonblank to display table structure         |
+  |                                                            |
   | Author:    Lionel B. Dyck                                  |
   |                                                            |
   | History:  (most recent on top)                             |
+  |            04/03/23 - V3.1 - Add C (close) option          |
+  |                     - Add REFresh command                  |
   |            06/16/22 - V3.0 - remove selected table display |
   |                       and use the tabdispl exec, now as a  |
   |                       subroutine to display selected table.|
@@ -40,12 +47,11 @@
 
   arg table_name
 
-  /* ------------------------------------ *
-  | Define Address and query open tables |
-  * ------------------------------------ */
+  /* ------------- *
+  | Define Address |
+  * -------------- */
   Address ISPExec
   'Control Errors Return'
-  'qtabopen list(tabs)'
   null = ''
 
   /* --------------> Enable Repeat Find <------------------- *
@@ -79,9 +85,11 @@
   | Build ISPF Table for List of Tables |
   * ----------------------------------- */
   qtab = 'QTAB'random(9999)
+Restart:
   'TBCreate' qtab 'Names(tab cdate ctime udate utime user rowcreat' ,
     'rowcurr rowupd tableupd status1 status2 keysn namesn' ,
     'status3 library virtsize keys names) nowrite'
+  'qtabopen list(tabs)'
 
   /* ------------------------------------ *
   | Now add the open tables to our table |
@@ -199,6 +207,10 @@
     top = ztdtop
     if zcmd /= null then do
       zcmd = translate(zcmd)
+      if abbrev('REFRESH',zcmd,3) = 1 then do
+         'tbend' qtab
+         signal restart
+         end
       if word(zcmd,1) = 'RFIND' then do
         'tbtop' qtab
         'tbskip' qtab 'number('top')'
@@ -234,7 +246,30 @@
         end
       end
     end
-    else if sel /= null then call do_table
+    else Select
+      when sel = null then nop
+      when sel = 'C' then
+        if tab /= qtab then do
+        'tbend' tab
+        if rc = 0 then do
+          zedsmsg = 'Closed.'
+          zedlmsg = tab 'was closed using TBEND.'
+          'setmsg msg(isrz001)'
+        end
+        else do
+          zedsmsg = zerrsm
+          zedlmsg = zerrlm
+          'setmsg msg(isrz001)'
+        end
+      end
+      else do
+          zedsmsg = 'Left Open.'
+          zedlmsg = tab 'was not closed as it is used by QTAB.'
+          'setmsg msg(isrz001)'
+        end
+      otherwise call do_table
+    end
+    sel = null
   end
 
   /* ---------------------- *
@@ -298,6 +333,8 @@ Tabdispl: Procedure
   parse value names with '('names')'
 
   'tbstats' table 'cdate(cd) ctime(ct) udate(ud) utime(ut) user(user)'
+
+  if datatype(rows) = 'CHAR' then rows = 0
 
   call do_say 'Table name:' table
   call do_say 'Rows: ' rows+0
