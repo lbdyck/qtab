@@ -15,7 +15,7 @@ Description: Display All Open ISPF Tables
 
 # Valid Commands
 ```
-  Find xxx       to find a table with xxx
+  Find xxx       to find a table with xxx in the table name
   REFresh        to refresh the table of open tables
 ```
 
